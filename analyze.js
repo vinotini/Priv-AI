@@ -1,7 +1,6 @@
 // api/analyze.js
 import formidable from 'formidable';
 import fs from 'fs';
-import path from 'path';
 import { extractText } from '../utils/extractText.js';
 import { detectLeaksAI } from '../utils/detectLeaksAI.js';
 import { calculateScore } from '../utils/calculateScore.js';
@@ -18,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   const form = new formidable.IncomingForm({
-    uploadDir: './tmp',
+    uploadDir: '/tmp',
     keepExtensions: true,
   });
 
@@ -27,7 +26,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'File upload failed' });
     }
 
-    const filePath = files.document[0].filepath;
+    const filePath = Array.isArray(files.document)
+      ? files.document[0].filepath
+      : files.document.filepath;
+
     try {
       const text = await extractText(filePath);
       const leaks = detectLeaksAI(text);
