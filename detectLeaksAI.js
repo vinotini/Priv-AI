@@ -1,48 +1,21 @@
-// A simple AI-enhanced leak detection by keyword & pattern matching
-
-const keywords = [
-  "password",
-  "ssn",
-  "social security number",
-  "credit card",
-  "card number",
-  "address",
-  "phone",
-  "email",
-  "dob",
-  "date of birth",
-  "bank account",
-  "routing number",
-  "passport",
-  "driver's license",
-  "cvv",
+const PRIVACY_KEYWORDS = [
+  'password', 'ssn', 'social security', 'credit card', 'email',
+  'phone', 'address', 'secret', 'dob', 'birthdate', 'bank account',
+  'pin', 'security code', 'cvv', 'passport', 'driver license'
 ];
 
-const regexPatterns = [
-  /\b\d{3}-\d{2}-\d{4}\b/g, // SSN pattern
-  /\b(?:\d[ -]*?){13,16}\b/g, // Credit card numbers
-  /\b\d{2}\/\d{2}\/\d{4}\b/g, // Date formats like MM/DD/YYYY
-  /\b\d{3}\b/g, // Simplified CVV
-  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, // Emails
-];
-
+// AI/ML Inspired Detection: simple keyword matching + fuzzy partial match (case insensitive)
 export function detectLeaksAI(text) {
-  const leaksFound = new Set();
+  const textLower = text.toLowerCase();
+  const foundLeaks = [];
 
-  const lowerText = text.toLowerCase();
-
-  keywords.forEach((keyword) => {
-    if (lowerText.includes(keyword)) {
-      leaksFound.add(`Keyword found: "${keyword}"`);
+  for (const keyword of PRIVACY_KEYWORDS) {
+    if (textLower.includes(keyword)) {
+      foundLeaks.push(keyword);
     }
-  });
+  }
 
-  regexPatterns.forEach((regex) => {
-    const matches = text.match(regex);
-    if (matches) {
-      matches.forEach((match) => leaksFound.add(`Pattern found: "${match}"`));
-    }
-  });
+  // Future: integrate ML model here for semantic detection
 
-  return Array.from(leaksFound);
+  return [...new Set(foundLeaks)];  // remove duplicates
 }
