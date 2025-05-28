@@ -1,32 +1,48 @@
-import express from "express";
-import multer from "multer";
-import path from "path";
-import { extractText } from "../utils/extractText.js";
-import { detectLeaksAI } from "../utils/detectLeaksAI.js";
-import { calculateScore } from "../utils/calculateScore.js";
+// api/analyze.js
+import formidable from 'formidable';
+import fs from 'fs';
+import path from 'path';
+import { extractText } from '../utils/extractText.js';
+import { detectLeaksAI } from '../utils/detectLeaksAI.js';
+import { calculateScore } from '../utils/calculateScore.js';
 
-const router = express.Router();
-const upload = multer({ dest: "uploads/" });
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-router.post("/api/analyze", upload.single("document"), async (req, res) => {
-  try {
-    const filePath = req.file.path;
-    const mimetype = req.file.mimetype;
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
-    const text = await extractText(filePath, mimetype);
+  const form = new formidable.IncomingForm({
+    uploadDir: './tmp',
+    keepExtensions: true,
+  });
 
-    if (!text || text.trim() === "") {
-      return res.status(400).json({ error: "Failed to extract text from document" });
+  form.parse(req, async (err, fields, files) => {
+    if (err || !files.document) {
+      return res.status(400).json({ error: 'File upload failed' });
     }
 
-    const leaks = detectLeaksAI(text);
-    const riskScore = calculateScore(text, leaks);
+    const filePath = files.document[0].filepath;
+    try {
+      const text = await extractText(filePath);
+      const leaks = detectLeaksAI(text);
+      const risk_score = calculateScore(text, leaks);
 
-    return res.json({ text, leaks, riskScore });
-  } catch (err) {
-    console.error("Analyze error:", err);
-    return res.status(500).json({ error: "Server error during analysis" });
-  }
-});
-
-export default router;
+      res.status(200).json({
+        preview: text.slice(0, 1000),
+        leaks,
+        risk_score,
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'Failed to analyze file' });
+    } finally {
+      fs.unlink(filePath, () => {});
+    }
+  });
+}
