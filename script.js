@@ -1,53 +1,40 @@
-document.getElementById("uploadForm").addEventListener("submit", async function (e) {
+document.getElementById("uploadForm").addEventListener("submit", function (e) {
   e.preventDefault();
 
   const fileInput = document.getElementById("fileInput");
   const file = fileInput.files[0];
-  if (!file) return;
+
+  if (!file) {
+    alert("Please choose a file.");
+    return;
+  }
 
   const formData = new FormData();
   formData.append("document", file);
 
-  const resultDiv = document.getElementById("result");
-  const previewDiv = document.getElementById("preview");
-  const leakList = document.getElementById("leakList");
-  const scoreFill = document.getElementById("scoreFill");
-  const scoreText = document.getElementById("scoreText");
+  fetch("/api/analyze", {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      document.getElementById("result").classList.remove("hidden");
+      document.getElementById("preview").textContent = data.preview;
 
-  // Reset UI
-  previewDiv.textContent = "Analyzing...";
-  leakList.innerHTML = "";
-  scoreFill.style.width = "0";
-  scoreText.textContent = "";
-  resultDiv.classList.remove("hidden");
-
-  try {
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      previewDiv.textContent = "Error analyzing document.";
-      return;
-    }
-
-    const data = await response.json();
-
-    previewDiv.textContent = data.text;
-    if (data.leaks.length === 0) {
-      leakList.innerHTML = "<li>No privacy leaks detected!</li>";
-    } else {
+      const leakList = document.getElementById("leakList");
+      leakList.innerHTML = "";
       data.leaks.forEach((leak) => {
         const li = document.createElement("li");
         li.textContent = leak;
         leakList.appendChild(li);
       });
-    }
 
-    scoreFill.style.width = `${data.riskScore}%`;
-    scoreText.textContent = `Risk Score: ${data.riskScore.toFixed(2)}%`;
-  } catch (error) {
-    previewDiv.textContent = "Failed to analyze document.";
-  }
+      const score = data.risk_score;
+      document.getElementById("scoreFill").style.width = `${score}%`;
+      document.getElementById("scoreText").textContent = `Risk Score: ${score}%`;
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      alert("Something went wrong. Please try again.");
+    });
 });
