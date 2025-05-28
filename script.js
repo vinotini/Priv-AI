@@ -1,40 +1,56 @@
-document.getElementById("uploadForm").addEventListener("submit", function (e) {
-  e.preventDefault();
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('uploadForm');
+  const fileInput = document.getElementById('fileInput');
+  const previewBox = document.getElementById('preview');
+  const leakList = document.getElementById('leakList');
+  const scoreBar = document.getElementById('scoreBar');
+  const scoreText = document.getElementById('scoreText');
+  const errorBox = document.getElementById('error');
 
-  const fileInput = document.getElementById("fileInput");
-  const file = fileInput.files[0];
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorBox.textContent = '';
+    previewBox.textContent = '';
+    leakList.innerHTML = '';
+    scoreBar.style.width = '0%';
+    scoreText.textContent = '';
 
-  if (!file) {
-    alert("Please choose a file.");
-    return;
-  }
+    if (!fileInput.files.length) {
+      errorBox.textContent = 'Please select a file.';
+      return;
+    }
 
-  const formData = new FormData();
-  formData.append("document", file);
+    const formData = new FormData();
+    formData.append('document', fileInput.files[0]);
 
-  fetch("/api/analyze", {
-    method: "POST",
-    body: formData,
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      document.getElementById("result").classList.remove("hidden");
-      document.getElementById("preview").textContent = data.preview;
-
-      const leakList = document.getElementById("leakList");
-      leakList.innerHTML = "";
-      data.leaks.forEach((leak) => {
-        const li = document.createElement("li");
-        li.textContent = leak;
-        leakList.appendChild(li);
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        body: formData,
       });
 
-      const score = data.risk_score;
-      document.getElementById("scoreFill").style.width = `${score}%`;
-      document.getElementById("scoreText").textContent = `Risk Score: ${score}%`;
-    })
-    .catch((error) => {
-      console.error("Error:", error);
-      alert("Something went wrong. Please try again.");
-    });
+      if (!response.ok) {
+        throw new Error('Failed to analyze file.');
+      }
+
+      const data = await response.json();
+
+      previewBox.textContent = data.preview || 'No preview available.';
+      if (data.leaks.length) {
+        for (const leak of data.leaks) {
+          const li = document.createElement('li');
+          li.textContent = leak;
+          leakList.appendChild(li);
+        }
+      } else {
+        leakList.innerHTML = '<li>No leaks detected</li>';
+      }
+
+      const riskScore = data.risk_score || 0;
+      scoreBar.style.width = riskScore + '%';
+      scoreText.textContent = `Risk Score: ${riskScore}/100`;
+    } catch (error) {
+      errorBox.textContent = error.message;
+    }
+  });
 });
