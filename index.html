@@ -1,34 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PrivAI - Privacy Leak Detector</title>
-    <link rel="stylesheet" href="/public/css/styles.css" />
-  </head>
-  <body>
-    <div class="container">
-      <h1>PrivAI</h1>
-      <h3>Detect privacy leaks in documents</h3>
-      <form id="uploadForm" enctype="multipart/form-data">
-        <input type="file" id="fileInput" name="document" accept=".pdf,.docx,.txt" />
-        <button type="submit">Analyze</button>
-      </form>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PrivAI - Privacy Leak Detection</title>
+  <link rel="stylesheet" href="/public/css/styles.css?v=2" />
+</head>
+<body>
+  <div class="container">
+    <h1>PrivAI</h1>
+    <p>AI-powered privacy leak detection for shared documents</p>
+    <form id="uploadForm">
+      <input type="file" id="fileInput" accept=".pdf,.txt" />
+      <button type="submit">Analyze</button>
+      <p id="error" style="color:#ff3860; font-weight:700; margin-top:10px;"></p>
+    </form>
 
-      <div id="result" class="hidden">
-        <h3>Document Preview</h3>
-        <div id="preview" class="preview-box"></div>
+    <div id="preview" class="preview-box"></div>
 
-        <h3>Potential Leaks</h3>
-        <ul id="leakList"></ul>
+    <ul id="leakList"></ul>
 
-        <div id="scoreMeter">
-          <div id="scoreFill"></div>
-        </div>
-        <p id="scoreText"></p>
-      </div>
+    <div id="scoreMeter">
+      <div id="scoreBar"></div>
     </div>
+    <p id="scoreText"></p>
+  </div>
 
-    <script src="/public/js/script.js"></script>
-  </body>
+  <script src="/public/js/script.js?v=2"></script>
+</body>
 </html>
