@@ -1,35 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PrivAI - Privacy Leak Detection</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/styles.css" />
-</head>
-<body>
-  <div class="container">
-    <h1>PrivAI</h1>
-    <h3>AI-powered Privacy Leak Detection in Shared Documents</h3>
-
-    <form id="uploadForm" enctype="multipart/form-data">
-      <input type="file" id="fileInput" name="document" accept=".txt,.pdf,.docx" required />
-      <button type="submit">Analyze Document</button>
-    </form>
-
-    <div id="result" class="hidden">
-      <h3>📝 Document Preview</h3>
-      <div id="preview" class="preview-box"></div>
-
-      <h3>🔍 Detected Privacy Leaks</h3>
-      <ul id="leakList"></ul>
-
-      <h3>📊 Risk Score</h3>
-      <div id="scoreMeter"><div id="scoreFill"></div></div>
-      <p id="scoreText"></p>
-    </div>
+<form id="uploadForm">
+  <input type="file" id="fileInput" name="document" required />
+  <button type="submit">Analyze</button>
+</form>
+<div id="result" class="hidden">
+  <div id="preview" class="preview-box"></div>
+  <ul id="leakList"></ul>
+  <div id="scoreMeter">
+    <div id="scoreFill"></div>
   </div>
-
-  <script src="/js/script.js"></script>
-</body>
-</html>
+  <p id="scoreText"></p>
+</div>
