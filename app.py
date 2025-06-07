@@ -29,13 +29,14 @@ def login(username, password):
     return username == "admin" and password == "privai2025"
 
 if not st.session_state.authenticated:
-    st.title("🔐 Login to PrivAI Copilot")
+    st.title("🔐 Login to PrivAI")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     if st.button("Login"):
         if login(username, password):
             st.session_state.authenticated = True
-            st.rerun()
+            st.success("Login successful! Please refresh the page.")
+            st.stop()
         else:
             st.error("Invalid credentials")
     st.stop()
@@ -115,3 +116,32 @@ if page == "Saved Reports":
 """, unsafe_allow_html=True)
     else:
         st.info("No reports yet.")
+
+# Footer with copyright/license info
+def footer():
+    st.markdown(
+        """
+        <style>
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #f0f2f6;
+            color: #444;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        </style>
+        <div class="footer">
+            © 2025 Vinotini Uthirapathy - All Rights Reserved | 
+            Unauthorized copying, distribution, modification, or use of this project is strictly prohibited.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+footer()
+
