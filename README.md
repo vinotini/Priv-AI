@@ -1,20 +1,39 @@
-# PrivAI – AI Powered Privacy Leak Detection
+# PrivAI - AI-powered Privacy Leak Detection
+
+## Overview
+PrivAI is an advanced web application designed to detect privacy leaks in uploaded documents such as PDFs, DOCX, and TXT files. Leveraging AI-enhanced natural language processing (NLP), PrivAI scans and identifies sensitive information, assigns dynamic risk scores, and helps users protect their data before sharing or publishing documents.
+
+---
 
 ## Features
-- Modern animated UI
-- Saved reports persist after refresh
-- Risk score visualized
-- PII redaction + explanation
-- Upload DOCX / PDF / TXT
+- Upload multiple document formats: PDF, DOCX, TXT
+- AI-powered detection of sensitive and private information
+- Dynamic risk scoring with detailed visualization
+- Clean, responsive pastel-themed UI using Streamlit
+- Real-time processing and feedback
+- Export risk analysis reports (planned)
+- Scalable and modular architecture for future enhancements
+
+---
 
 ## Login
-- Username: admin
-- Password: privai2025
+- **Username:** admin  
+- **Password:** privai2025
 
-## How to Run
+## Installation
+
+### Prerequisites
+- Python 3.8 or higher
+- Anaconda (recommended) or virtual environment setup
+- Streamlit
+
+### Steps
+
+1. Clone the repository
 ```bash
-pip install -r requirements.txt
-streamlit run app.py
+git clone https://github.com/vinotini/privai.git
+cd privai
+
 
 All Rights Reserved
 
