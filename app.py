@@ -5,147 +5,227 @@ import re
 import matplotlib.pyplot as plt
 import json
 import os
+from transformers import pipeline
+from transformers.pipelines import AggregationStrategy
 
-st.set_page_config(page_title="PrivAI", layout="wide")
+st.set_page_config(page_title="PrivAI", layout="wide", page_icon="🤖")
+
 REPORTS_FILE = "saved_reports.json"
 
+# Load and save functions for reports
 def load_reports():
     if os.path.exists(REPORTS_FILE):
-        with open(REPORTS_FILE, "r") as f:
-            return json.load(f)
+        try:
+            with open(REPORTS_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return []
     return []
 
 def save_reports(reports):
     with open(REPORTS_FILE, "w") as f:
-        json.dump(reports, f)
+        json.dump(reports, f, indent=4)
 
-if os.path.exists("styles.css"):
-    with open("styles.css") as css:
-        st.markdown(f"<style>{css.read()}</style>", unsafe_allow_html=True)
-
+# Initialize session state variables
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
 
+# Initialize NER pipeline once with caching
+@st.cache_resource(show_spinner=False)
+def load_ner_model():
+    return pipeline(
+        "ner",
+        model="dbmdz/bert-large-cased-finetuned-conll03-english",
+        aggregation_strategy=AggregationStrategy.SIMPLE,
+    )
+
+ner_pipeline = load_ner_model()
+
+# Simple login check
 def login(username, password):
     return username == "admin" and password == "privai2025"
 
-# --- UI ---
+# Logout function
+def logout():
+    st.session_state.authenticated = False
+    st.session_state.username = ""
 
-def show_login():
-    st.title("🔐 Login to PrivAI")
-    username = st.text_input("Username", key="username")
-    password = st.text_input("Password", type="password", key="password")
-    login_clicked = st.button("Login")
-    if login_clicked:
-        if login(username, password):
-            st.session_state.authenticated = True
-            st.success("Login successful! Please continue below.")
-        else:
-            st.error("Invalid credentials")
-
+# Extract document text
 def extract_text(file):
-    if file.name.endswith(".txt"):
-        return file.read().decode("utf-8")
-    elif file.name.endswith(".pdf"):
-        with pdfplumber.open(file) as pdf:
-            return "\n".join(p.extract_text() for p in pdf.pages if p.extract_text())
-    elif file.name.endswith(".docx"):
-        return docx2txt.process(file)
+    try:
+        if file.name.endswith(".txt"):
+            return file.read().decode("utf-8")
+        elif file.name.endswith(".pdf"):
+            with pdfplumber.open(file) as pdf:
+                pages_text = []
+                for page in pdf.pages:
+                    text = page.extract_text()
+                    if text:
+                        pages_text.append(text)
+                return "\n".join(pages_text)
+        elif file.name.endswith(".docx"):
+            return docx2txt.process(file)
+    except Exception as e:
+        st.error(f"Error extracting text: {e}")
     return ""
 
-def detect_leaks(text):
-    keywords = ['password', 'ssn', 'credit card', 'confidential', 'dob', 'email', 'phone', 'address']
-    found = [kw for kw in keywords if re.search(rf"\b{kw}\b", text, re.IGNORECASE)]
-    score = len(found) * 12.5
-    explanations = [f"The word '{kw}' is a potential leak based on privacy guidelines." for kw in found]
-    return found, min(score, 100), explanations
+# Keyword based detection with enhanced sensitive keywords
+def detect_keywords(text):
+    keywords = [
+        'password', 'ssn', 'social security number', 'credit card', 'card number',
+        'confidential', 'dob', 'date of birth', 'email', 'phone', 'address', 'account number',
+        'routing number', 'pin', 'cvv', 'passport', 'driver license'
+    ]
+    found = []
+    for kw in keywords:
+        if re.search(rf"\b{re.escape(kw)}\b", text, re.IGNORECASE):
+            found.append(kw)
+    return found
 
+# AI NER based detection
+def detect_ner_entities(text):
+    entities = []
+    try:
+        ner_results = ner_pipeline(text)
+        for ent in ner_results:
+            # Filter for entities likely to be sensitive
+            if ent['entity_group'] in ['PER', 'ORG', 'LOC', 'MISC', 'DATE']:
+                entities.append(ent['word'])
+    except Exception as e:
+        st.warning(f"NER detection failed: {e}")
+    # Remove duplicates, normalize case
+    entities = list(set(entities))
+    return entities
+
+# Combined detection
+def detect_leaks(text):
+    keywords_found = detect_keywords(text)
+    ner_entities = detect_ner_entities(text)
+
+    # Combine and deduplicate leaks
+    leaks = list(set([kw.lower() for kw in keywords_found] + [ent.lower() for ent in ner_entities]))
+
+    # Dynamic risk score calculation
+    base_score = len(keywords_found) * 12.5
+    ner_score = min(len(ner_entities) * 7, 50)  # NER less weight per entity
+    score = min(base_score + ner_score, 100)
+
+    explanations = []
+    for kw in keywords_found:
+        explanations.append(f"The keyword '{kw}' was flagged as a privacy risk.")
+    for ent in ner_entities:
+        explanations.append(f"The entity '{ent}' was detected as sensitive information by AI.")
+
+    return leaks, score, explanations
+
+# Redact sensitive info (keywords and entities)
 def redact_text(text, leaks):
     for kw in leaks:
-        text = re.sub(rf"\b{kw}\b", f"[REDACTED {kw.upper()}]", text, flags=re.IGNORECASE)
+        # Escape for regex
+        pattern = re.escape(kw)
+        text = re.sub(rf"\b{pattern}\b", f"[REDACTED]", text, flags=re.IGNORECASE)
     return text
 
-def show_main_app():
-    st.title("🤖 PrivAI – Privacy Leak Detection ")
-    st.sidebar.success("Logged in")
-    page = st.sidebar.radio("📂 Navigate", ["Analyze", "Saved Reports"])
+# Login UI
+def show_login():
+    st.markdown("## 🔐 Welcome to PrivAI")
+    username = st.text_input("Username", key="login_username")
+    password = st.text_input("Password", type="password", key="login_password")
+    if st.button("Login"):
+        if login(username, password):
+            st.session_state.authenticated = True
+            st.session_state.username = username
+            st.success("Login successful! Please continue below.")
+        else:
+            st.error("Invalid username or password")
 
-    if page == "Analyze":
-        file = st.file_uploader("📄 Upload a document", type=["pdf", "docx", "txt"])
+# Main app UI
+def show_main_app():
+    st.title(":shield: PrivAI – AI Privacy Leak Detection")
+
+    st.sidebar.write(f"👤 Logged in as **{st.session_state.username}**")
+    if st.sidebar.button("Logout"):
+        logout()
+        st.experimental_rerun()
+
+    page = st.sidebar.radio("Navigation", ["Analyze Document", "View Saved Reports"])
+
+    if page == "Analyze Document":
+        file = st.file_uploader("Upload Document", type=["pdf", "docx", "txt"])
         if file:
-            with st.spinner("Analyzing..."):
+            with st.spinner("Analyzing document with AI-powered detection..."):
                 text = extract_text(file)
+                if not text.strip():
+                    st.error("No text extracted from the document.")
+                    return
                 leaks, score, explanations = detect_leaks(text)
                 redacted = redact_text(text, leaks)
 
-            st.success("✅ Analysis Complete")
-            with st.expander("📃 Original Document"):
-                st.text_area("Extracted Text", text, height=200)
-            with st.expander("🛡️ Redacted Document"):
-                st.text_area("Redacted Output", redacted, height=200)
+            st.success("Analysis complete!")
 
-            st.subheader("🔍 Leaks Detected")
-            st.write(leaks if leaks else "✅ No sensitive info found.")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("Original Text")
+                st.text_area("Extracted Text", text, height=300)
+            with col2:
+                st.subheader("Redacted Text")
+                st.text_area("Redacted Output", redacted, height=300)
+
+            st.subheader("Detected Leaks")
+            if leaks:
+                st.write(", ".join(leaks))
+            else:
+                st.success("No sensitive information detected.")
+
             if explanations:
-                with st.expander("🧠 Why these were flagged"):
-                    for e in explanations:
-                        st.markdown(f"- {e}")
+                with st.expander("Why were these flagged?"):
+                    for exp in explanations:
+                        st.markdown(f"- {exp}")
 
-            st.subheader("📊 Risk Score")
+            st.subheader("Risk Score")
+            st.metric("Risk", f"{score:.0f}/100")
             st.progress(score / 100)
-            st.metric("Score", f"{score:.0f}/100")
+
             fig, ax = plt.subplots()
             ax.barh(["Risk"], [score], color="#ff6b6b")
             ax.set_xlim(0, 100)
+            ax.set_xlabel("Risk Level")
             st.pyplot(fig)
 
-            if st.button("💾 Save Report"):
+            if st.button("Save Report"):
                 reports = load_reports()
-                reports.append({"name": file.name, "leaks": leaks, "score": score})
+                reports.append({
+                    "name": file.name,
+                    "leaks": leaks,
+                    "score": score,
+                })
                 save_reports(reports)
-                st.success("Saved!")
+                st.success("Report saved successfully.")
 
-    elif page == "Saved Reports":
-        st.subheader("📁 Reports")
+    elif page == "View Saved Reports":
         reports = load_reports()
-        if reports:
-            for r in reports:
-                st.markdown(f"""
-<div style="border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:5px;">
-<strong>📄 File:</strong> {r['name']}<br>
-<strong>🔐 Leaks:</strong> {', '.join(r['leaks']) if r['leaks'] else 'None'}<br>
-<strong>📊 Score:</strong> {r['score']} / 100
-</div>
-""", unsafe_allow_html=True)
+        st.subheader("Saved Reports")
+        if not reports:
+            st.info("No saved reports found.")
         else:
-            st.info("No reports yet.")
+            for i, report in enumerate(reports):
+                with st.expander(f"{report['name']} (Report #{i+1})"):
+                    st.write(f"**Leaks:** {', '.join(report['leaks']) if report['leaks'] else 'None'}")
+                    st.write(f"**Risk Score:** {report['score']} / 100")
 
-    # Footer with your name and copyright
-    st.markdown(
-        """
-        <style>
-        .footer {
-            position: fixed;
-            left: 0;
-            bottom: 0;
-            width: 100%;
-            background-color: #f0f2f6;
-            color: #444;
-            text-align: center;
-            padding: 10px 0;
-            font-size: 12px;
-            z-index: 1000;
-        }
-        </style>
-        <div class="footer">
-            © 2025 Vinotini Uthirapathy - All Rights Reserved | Unauthorized copying, distribution, modification, or use of this project is strictly prohibited.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Footer
+    st.markdown("""
+    <hr style='margin-top: 2em;'/>
+    <div style='text-align:center; font-size: 12px; color: gray;'>
+        © 2025 Vinotini Uthirapathy - All Rights Reserved. Unauthorized use prohibited.
+    </div>
+    """, unsafe_allow_html=True)
 
-
+# Entry point
 if st.session_state.authenticated:
     show_main_app()
 else:
     show_login()
+
