@@ -1,0 +1,1 @@
+[{"name": "leak_example.docx", "leaks": ["password", "confidential", "dob", "email", "phone"], "score": 62.5}]

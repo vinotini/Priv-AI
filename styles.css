@@ -1,0 +1,55 @@
+:root {
+  --primary: #7f5af0;
+  --background: #f4f6fa;
+  --accent: #ff6b6b;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--background);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input, textarea, button {
+  border-radius: 10px;
+  border: none;
+  padding: 10px;
+  font-family: inherit;
+}
+
+button {
+  background-color: var(--primary);
+  color: white;
+  transition: 0.3s;
+}
+
+button:hover {
+  background-color: #684df0;
+  transform: scale(1.03);
+}
+
+.report-box {
+  background-color: white;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-left: 5px solid var(--primary);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.glass-box {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
