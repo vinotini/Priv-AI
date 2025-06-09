@@ -12,7 +12,6 @@ st.set_page_config(page_title="PrivAI", layout="wide", page_icon="🤖")
 
 REPORTS_FILE = "saved_reports.json"
 
-# Load and save functions for reports
 def load_reports():
     if os.path.exists(REPORTS_FILE):
         try:
@@ -26,13 +25,11 @@ def save_reports(reports):
     with open(REPORTS_FILE, "w") as f:
         json.dump(reports, f, indent=4)
 
-# Initialize session state variables
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "username" not in st.session_state:
     st.session_state.username = ""
 
-# Initialize NER pipeline once with caching
 @st.cache_resource(show_spinner=False)
 def load_ner_model():
     return pipeline(
@@ -43,21 +40,22 @@ def load_ner_model():
 
 ner_pipeline = load_ner_model()
 
-# Simple login check
 def login(username, password):
     return username == "admin" and password == "privai2025"
 
-# Logout function
 def logout():
     st.session_state.authenticated = False
     st.session_state.username = ""
 
-# Extract document text
 def extract_text(file):
     try:
-        if file.name.endswith(".txt"):
+        file_extension = file.name.split('.')[-1].lower()
+        
+        if file_extension == "txt":
             return file.read().decode("utf-8")
-        elif file.name.endswith(".pdf"):
+        
+        elif file_extension == "pdf":
+            file.seek(0)  # ensure pointer at start
             with pdfplumber.open(file) as pdf:
                 pages_text = []
                 for page in pdf.pages:
@@ -65,13 +63,18 @@ def extract_text(file):
                     if text:
                         pages_text.append(text)
                 return "\n".join(pages_text)
-        elif file.name.endswith(".docx"):
-            return docx2txt.process(file)
+        
+        elif file_extension == "docx":
+            # docx2txt requires a filepath, so save temp file
+            import tempfile
+            with tempfile.NamedTemporaryFile(delete=True, suffix=".docx") as tmp:
+                tmp.write(file.read())
+                tmp.flush()
+                return docx2txt.process(tmp.name)
     except Exception as e:
         st.error(f"Error extracting text: {e}")
     return ""
 
-# Keyword based detection with enhanced sensitive keywords
 def detect_keywords(text):
     keywords = [
         'password', 'ssn', 'social security number', 'credit card', 'card number',
@@ -84,32 +87,26 @@ def detect_keywords(text):
             found.append(kw)
     return found
 
-# AI NER based detection
 def detect_ner_entities(text):
     entities = []
     try:
         ner_results = ner_pipeline(text)
         for ent in ner_results:
-            # Filter for entities likely to be sensitive
             if ent['entity_group'] in ['PER', 'ORG', 'LOC', 'MISC', 'DATE']:
                 entities.append(ent['word'])
     except Exception as e:
         st.warning(f"NER detection failed: {e}")
-    # Remove duplicates, normalize case
     entities = list(set(entities))
     return entities
 
-# Combined detection
 def detect_leaks(text):
     keywords_found = detect_keywords(text)
     ner_entities = detect_ner_entities(text)
 
-    # Combine and deduplicate leaks
     leaks = list(set([kw.lower() for kw in keywords_found] + [ent.lower() for ent in ner_entities]))
 
-    # Dynamic risk score calculation
     base_score = len(keywords_found) * 12.5
-    ner_score = min(len(ner_entities) * 7, 50)  # NER less weight per entity
+    ner_score = min(len(ner_entities) * 7, 50)
     score = min(base_score + ner_score, 100)
 
     explanations = []
@@ -120,15 +117,12 @@ def detect_leaks(text):
 
     return leaks, score, explanations
 
-# Redact sensitive info (keywords and entities)
 def redact_text(text, leaks):
     for kw in leaks:
-        # Escape for regex
         pattern = re.escape(kw)
-        text = re.sub(rf"\b{pattern}\b", f"[REDACTED]", text, flags=re.IGNORECASE)
+        text = re.sub(rf"\b{pattern}\b", "[REDACTED]", text, flags=re.IGNORECASE)
     return text
 
-# Login UI
 def show_login():
     st.markdown("## 🔐 Welcome to PrivAI")
     username = st.text_input("Username", key="login_username")
@@ -141,7 +135,6 @@ def show_login():
         else:
             st.error("Invalid username or password")
 
-# Main app UI
 def show_main_app():
     st.title(":shield: PrivAI – AI Privacy Leak Detection")
 
@@ -215,7 +208,6 @@ def show_main_app():
                     st.write(f"**Leaks:** {', '.join(report['leaks']) if report['leaks'] else 'None'}")
                     st.write(f"**Risk Score:** {report['score']} / 100")
 
-    # Footer
     st.markdown("""
     <hr style='margin-top: 2em;'/>
     <div style='text-align:center; font-size: 12px; color: gray;'>
@@ -223,9 +215,9 @@ def show_main_app():
     </div>
     """, unsafe_allow_html=True)
 
-# Entry point
 if st.session_state.authenticated:
     show_main_app()
 else:
     show_login()
+
 
