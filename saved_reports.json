@@ -1,1 +1,58 @@
-[{"name": "leak_example.docx", "leaks": ["password", "confidential", "dob", "email", "phone"], "score": 62.5}]
+[
+    {
+        "name": "leak_example.docx",
+        "leaks": [
+            "password",
+            "confidential",
+            "dob",
+            "email",
+            "phone"
+        ],
+        "score": 62.5
+    },
+    {
+        "name": "customer_credit (1).docx",
+        "leaks": [
+            "##cme",
+            "card number",
+            "water tower",
+            "ut",
+            "maple drive mayfield",
+            "desert palm lane hurricane",
+            "anvil",
+            "artie fishell",
+            "a",
+            "##yote",
+            "ca",
+            "burbank",
+            "acme company",
+            "us",
+            "il",
+            "mastercard",
+            "e",
+            "bank",
+            ".",
+            "w.",
+            "co",
+            "warner bros",
+            "acme",
+            "fishell",
+            "credit card"
+        ],
+        "score": 75.0
+    },
+    {
+        "name": "leak_example.txt",
+        "leaks": [
+            "ssn",
+            "email",
+            "dob",
+            "phone",
+            "john",
+            "credit card",
+            "do",
+            "##e"
+        ],
+        "score": 83.5
+    }
+]
